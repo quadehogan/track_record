@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -64,6 +65,12 @@ export function FinishedView({
       </Card>
 
       <PlaylistCard code={code} view={view} />
+
+      <Button
+        variant="secondary"
+        nativeButton={false}
+        render={<Link href="/">Back to home</Link>}
+      />
     </div>
   );
 }
