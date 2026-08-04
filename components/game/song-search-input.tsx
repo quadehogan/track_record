@@ -71,7 +71,7 @@ export function SongSearchInput({
         placeholder="Search for a song..."
       />
       {isOpen && query.trim() && (
-        <div className="absolute z-10 mt-1 max-h-80 w-full overflow-y-auto rounded-lg border bg-popover shadow-md">
+        <div className="absolute z-10 mt-1 max-h-80 min-h-[168px] w-full overflow-y-auto rounded-lg border bg-popover shadow-md">
           {isLoading && (
             <div className="p-3 text-sm text-muted-foreground">
               Searching...
