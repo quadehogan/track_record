@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import {
+  Combobox,
+  ComboboxInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+} from "@/components/ui/combobox";
 
 export interface SpotifyTrackResult {
   spotifyTrackId: string;
@@ -22,15 +29,12 @@ export function SongSearchInput({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SpotifyTrackResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    // The dropdown itself is gated on query.trim() in the JSX below, so an
-    // empty query just needs to skip scheduling a search — no state to clear.
     if (!query.trim()) return;
 
     // Flip the loading indicator immediately on keystroke; the actual fetch
@@ -58,43 +62,33 @@ export function SongSearchInput({
   }, [query]);
 
   return (
-    <div className="relative">
-      <Input
-        value={query}
-        disabled={disabled}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setIsOpen(true);
-        }}
-        onFocus={() => setIsOpen(true)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+    <Combobox<SpotifyTrackResult>
+      items={query.trim() ? results : []}
+      filter={null}
+      inputValue={query}
+      onInputValueChange={(value) => setQuery(value)}
+      value={null}
+      onValueChange={(track) => {
+        if (!track) return;
+        onSelect(track);
+        setQuery("");
+        setResults([]);
+      }}
+      itemToStringValue={(track) => track.trackName}
+    >
+      <ComboboxInput
         placeholder="Search for a song..."
+        disabled={disabled}
+        showTrigger={false}
+        className="w-full"
       />
-      {isOpen && query.trim() && (
-        <div className="absolute z-10 mt-1 max-h-80 min-h-[168px] w-full overflow-y-auto rounded-lg border bg-popover shadow-md">
-          {isLoading && (
-            <div className="p-3 text-sm text-muted-foreground">
-              Searching...
-            </div>
-          )}
-          {!isLoading && results.length === 0 && (
-            <div className="p-3 text-sm text-muted-foreground">
-              No results
-            </div>
-          )}
-          {results.map((track) => (
-            <button
-              key={track.spotifyTrackId}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                onSelect(track);
-                setQuery("");
-                setResults([]);
-                setIsOpen(false);
-              }}
-              className="flex w-full items-center gap-3 p-2 text-left hover:bg-accent"
-            >
+      <ComboboxContent className="w-(--anchor-width)">
+        <ComboboxEmpty>
+          {isLoading ? "Searching..." : "No results"}
+        </ComboboxEmpty>
+        <ComboboxList className="min-h-[168px]">
+          {(track: SpotifyTrackResult) => (
+            <ComboboxItem key={track.spotifyTrackId} value={track}>
               {track.albumArtUrl ? (
                 <Image
                   src={track.albumArtUrl}
@@ -114,10 +108,10 @@ export function SongSearchInput({
                   {track.artistName}
                 </span>
               </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 }
