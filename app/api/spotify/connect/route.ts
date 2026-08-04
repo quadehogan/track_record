@@ -5,17 +5,17 @@ import { packSignedValue } from "@/lib/signed-value";
 
 export async function GET(request: Request) {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json(
-      { error: "Sign in to connect Spotify" },
-      { status: 401 },
-    );
-  }
-
-  const { searchParams } = new URL(request.url);
+  const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("gameCode");
+
   if (!code) {
     return NextResponse.json({ error: "gameCode is required" }, { status: 400 });
+  }
+
+  if (!userId) {
+    return NextResponse.redirect(
+      `${origin}/game/${code.toUpperCase()}?spotifyError=signin`,
+    );
   }
 
   const state = packSignedValue(code.toUpperCase());

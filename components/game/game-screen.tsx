@@ -1,7 +1,8 @@
 "use client";
 
 import useSWR from "swr";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,26 @@ export function GameScreen({
     fallbackData: initialView,
     refreshInterval: 4000,
   });
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const spotifyConnected = searchParams.get("spotifyConnected");
+    const spotifyError = searchParams.get("spotifyError");
+    if (!spotifyConnected && !spotifyError) return;
+
+    if (spotifyConnected) {
+      toast.success("Spotify connected!");
+      mutate();
+    } else if (spotifyError === "signin") {
+      toast.error("Sign in with a real account to connect Spotify");
+    } else {
+      toast.error("Failed to connect Spotify");
+    }
+    router.replace(`/game/${code}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   if (!view) return null;
 

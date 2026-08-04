@@ -31,6 +31,7 @@ export interface GameView {
     id: string;
     displayName: string;
     isHost: boolean;
+    isGuest: boolean;
     joinedAtSongIndex: number;
     spotifyConnected: boolean;
   } | null;
@@ -163,6 +164,7 @@ export async function getGameView(
           id: me.id,
           displayName: me.displayName,
           isHost: me.isHost,
+          isGuest: identity?.type !== "user",
           joinedAtSongIndex: me.joinedAtSongIndex,
           spotifyConnected: Boolean(spotifyConnection),
         }
