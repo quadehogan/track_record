@@ -63,7 +63,7 @@ export function FinishedView({
         </CardContent>
       </Card>
 
-      {view.me?.isHost && (
+      {view.me?.isHost && !view.me.isGuest && (
         <Card>
           <CardHeader>
             <CardTitle>Export to Spotify</CardTitle>

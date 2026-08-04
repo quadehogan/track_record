@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SignInButton } from "@clerk/nextjs";
 import { toast } from "sonner";
 import type { GameView } from "@/lib/queries/game-view";
 
@@ -16,24 +15,7 @@ export function ExportPlaylistButton({
   const [isExporting, setIsExporting] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
 
-  if (!view.me?.isHost) return null;
-
-  if (view.me.isGuest) {
-    return (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">
-          Playlist export needs a real account — you hosted this game as a
-          guest. Sign in, then create your next game while signed in to
-          enable export.
-        </p>
-        <SignInButton>
-          <Button variant="secondary" className="w-fit">
-            Sign in
-          </Button>
-        </SignInButton>
-      </div>
-    );
-  }
+  if (!view.me?.isHost || view.me.isGuest) return null;
 
   function handleConnectSpotify() {
     // Full navigation on purpose: this route redirects off-domain to Spotify's
