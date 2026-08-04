@@ -13,7 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { GameView } from "@/lib/queries/game-view";
 import type { PlayerScore } from "@/lib/scoring";
-import { PlaylistCard } from "@/components/game/playlist-card";
+import { ExportPlaylistButton } from "@/components/game/export-playlist-button";
+import { ResultsSongList } from "@/components/game/results-song-list";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -62,7 +63,32 @@ export function FinishedView({
         </CardContent>
       </Card>
 
-      <PlaylistCard code={code} view={view} />
+      {view.me?.isHost && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Export to Spotify</CardTitle>
+            <CardDescription>
+              Create a Spotify playlist with every submitted song.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExportPlaylistButton code={code} view={view} />
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Full song list</CardTitle>
+          <CardDescription>
+            Grouped by who submitted each one — green means you guessed it
+            right, red means you guessed wrong.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResultsSongList view={view} />
+        </CardContent>
+      </Card>
 
       <Button
         variant="secondary"

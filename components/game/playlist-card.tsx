@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,8 +9,8 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { toast } from "sonner";
 import type { GameView } from "@/lib/queries/game-view";
+import { ExportPlaylistButton } from "@/components/game/export-playlist-button";
 
 export function PlaylistCard({
   code,
@@ -20,34 +19,6 @@ export function PlaylistCard({
   code: string;
   view: GameView;
 }) {
-  const [isExporting, setIsExporting] = useState(false);
-  const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
-
-  function handleConnectSpotify() {
-    // Full navigation on purpose: this route redirects off-domain to Spotify's
-    // OAuth authorize page, not to another page within this app.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = `/api/spotify/connect?gameCode=${code}`;
-  }
-
-  async function handleExport() {
-    setIsExporting(true);
-    try {
-      const res = await fetch(`/api/games/${code}/export-playlist`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error ?? "Failed to export playlist");
-        return;
-      }
-      setPlaylistUrl(data.playlistUrl);
-      toast.success("Playlist created on Spotify!");
-    } finally {
-      setIsExporting(false);
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -59,32 +30,7 @@ export function PlaylistCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {view.me?.isHost && (
-          <div className="flex items-center gap-2">
-            {playlistUrl ? (
-              <Button
-                nativeButton={false}
-                render={
-                  <a
-                    href={playlistUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open playlist on Spotify
-                  </a>
-                }
-              />
-            ) : view.me.spotifyConnected ? (
-              <Button onClick={handleExport} disabled={isExporting}>
-                {isExporting ? "Exporting..." : "Export to Spotify"}
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={handleConnectSpotify}>
-                Connect Spotify to export
-              </Button>
-            )}
-          </div>
-        )}
+        <ExportPlaylistButton code={code} view={view} />
 
         <ol className="flex flex-col gap-2">
           {view.songs.map((song, i) => (
