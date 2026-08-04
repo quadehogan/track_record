@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import type { GameView, GameViewSong } from "@/lib/queries/game-view";
+import { PlaylistCard } from "@/components/game/playlist-card";
 
 export function GuessingView({
   code,
@@ -66,6 +67,8 @@ export function GuessingView({
 
   return (
     <div className="flex flex-col gap-6">
+      <PlaylistCard code={code} view={view} />
+
       {view.me?.isHost && view.game.guessingMode !== "all_at_once" && (
         <Card>
           <CardHeader>

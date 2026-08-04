@@ -35,11 +35,19 @@ export function SongSearchInput({
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (!query.trim()) return;
+    if (!query.trim()) {
+      // Invalidate any in-flight fetch and force-clear the loading flag —
+      // otherwise a query that goes empty mid-fetch (e.g. right after
+      // picking an item triggers Base UI's transient input auto-fill) can
+      // leave "Searching..." stuck on permanently.
+      requestIdRef.current += 1;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsLoading(false);
+      return;
+    }
 
     // Flip the loading indicator immediately on keystroke; the actual fetch
     // is deliberately deferred by the debounce timer below.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     debounceRef.current = setTimeout(async () => {
       const requestId = ++requestIdRef.current;
@@ -71,9 +79,12 @@ export function SongSearchInput({
       onValueChange={(track) => {
         if (!track) return;
         onSelect(track);
-        setQuery("");
         setResults([]);
+        // Base UI fills the input with itemToStringLabel after a selection;
+        // defer the clear so it runs after that fill instead of before it.
+        setTimeout(() => setQuery(""), 0);
       }}
+      itemToStringLabel={(track) => track.trackName}
       itemToStringValue={(track) => track.trackName}
     >
       <ComboboxInput
