@@ -19,7 +19,6 @@ export const gameStatusEnum = pgEnum("game_status", [
 export const guessingModeEnum = pgEnum("guessing_mode", [
   "all_at_once",
   "drip",
-  "host_paced",
 ]);
 
 export const revealModeEnum = pgEnum("reveal_mode", [

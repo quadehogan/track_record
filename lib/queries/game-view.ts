@@ -22,7 +22,7 @@ export interface GameView {
   game: {
     code: string;
     status: "submitting" | "guessing" | "finished";
-    guessingMode: "all_at_once" | "drip" | "host_paced";
+    guessingMode: "all_at_once" | "drip";
     revealMode: "immediate" | "end_of_song" | "end_of_game";
     submissionDeadline: string | null;
     currentSongPointer: number;

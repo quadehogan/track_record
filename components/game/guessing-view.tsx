@@ -43,10 +43,10 @@ export function GuessingView({
     return res.json();
   }
 
-  async function handleAdvance(action: "next" | "open" | "close") {
+  async function handleAdvance() {
     setIsAdvancing(true);
     try {
-      const view = await callApi("/advance", { action });
+      const view = await callApi("/advance", { action: "next" });
       if (view) onUpdate(view);
     } finally {
       setIsAdvancing(false);
@@ -63,7 +63,6 @@ export function GuessingView({
     }
   }
 
-  const hasOpenSong = view.songs.some((s) => s.unlockState === "open");
   const hasLockedSong = view.songs.some((s) => s.unlockState === "locked");
 
   return (
@@ -99,39 +98,20 @@ export function GuessingView({
         <Card>
           <CardHeader>
             <CardTitle>Host controls</CardTitle>
-            {view.game.guessingMode !== "all_at_once" && (
+            {view.game.guessingMode === "drip" && (
               <CardDescription>
-                {view.game.guessingMode === "drip"
-                  ? "Advance to the next song when everyone is ready."
-                  : "Open a song, let people guess, then close it before opening the next."}
+                Advance to the next song when everyone is ready.
               </CardDescription>
             )}
           </CardHeader>
           <CardFooter className="flex flex-wrap gap-2">
             {view.game.guessingMode === "drip" && (
               <Button
-                onClick={() => handleAdvance("next")}
+                onClick={handleAdvance}
                 disabled={isAdvancing || !hasLockedSong}
               >
                 Next song
               </Button>
-            )}
-            {view.game.guessingMode === "host_paced" && (
-              <>
-                <Button
-                  onClick={() => handleAdvance("open")}
-                  disabled={isAdvancing || hasOpenSong || !hasLockedSong}
-                >
-                  Open next song
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleAdvance("close")}
-                  disabled={isAdvancing || !hasOpenSong}
-                >
-                  Close current song
-                </Button>
-              </>
             )}
             <Button
               variant="destructive"

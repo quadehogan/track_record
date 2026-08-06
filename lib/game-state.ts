@@ -21,7 +21,7 @@ export function shuffle<T>(items: T[]): T[] {
   return result;
 }
 
-export type GuessingMode = "all_at_once" | "drip" | "host_paced";
+export type GuessingMode = "all_at_once" | "drip";
 export type RevealMode = "immediate" | "end_of_song" | "end_of_game";
 export type UnlockState = "locked" | "open" | "closed";
 
@@ -34,8 +34,8 @@ export function initialUnlockStates(
   if (guessingMode === "all_at_once") {
     return Array(songCount).fill("open");
   }
-  // drip and host_paced both start with only the first song open;
-  // the host/timer advances subsequent songs one at a time.
+  // drip starts with only the first song open; the host advances the rest
+  // one at a time.
   return ["open", ...Array(songCount - 1).fill("locked")];
 }
 

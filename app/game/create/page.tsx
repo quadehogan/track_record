@@ -28,11 +28,6 @@ const GUESSING_MODES = [
     label: "Drip",
     description: "Songs unlock one at a time as the host advances the game.",
   },
-  {
-    value: "host_paced",
-    label: "Host-paced",
-    description: "The host manually opens and closes each song for guessing.",
-  },
 ] as const;
 
 const REVEAL_MODES = [

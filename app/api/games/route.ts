@@ -8,7 +8,7 @@ import { generateGameCode } from "@/lib/game-state";
 
 const createGameSchema = z.object({
   hostDisplayName: z.string().trim().min(1).max(40),
-  guessingMode: z.enum(["all_at_once", "drip", "host_paced"]),
+  guessingMode: z.enum(["all_at_once", "drip"]),
   revealMode: z.enum(["immediate", "end_of_song", "end_of_game"]),
   submissionDeadline: z.string().datetime().optional(),
 });
