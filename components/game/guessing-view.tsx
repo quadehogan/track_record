@@ -12,6 +12,7 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import type { GameView, GameViewSong } from "@/lib/queries/game-view";
 import { PlaylistCard } from "@/components/game/playlist-card";
@@ -67,19 +68,19 @@ export function GuessingView({
 
   return (
     <div className="flex flex-col gap-6">
-      <PlaylistCard code={code} view={view} />
-
-      {view.me?.isHost && view.game.guessingMode !== "all_at_once" && (
+      {view.me?.isHost && (
         <Card>
           <CardHeader>
             <CardTitle>Host controls</CardTitle>
-            <CardDescription>
-              {view.game.guessingMode === "drip"
-                ? "Advance to the next song when everyone is ready."
-                : "Open a song, let people guess, then close it before opening the next."}
-            </CardDescription>
+            {view.game.guessingMode !== "all_at_once" && (
+              <CardDescription>
+                {view.game.guessingMode === "drip"
+                  ? "Advance to the next song when everyone is ready."
+                  : "Open a song, let people guess, then close it before opening the next."}
+              </CardDescription>
+            )}
           </CardHeader>
-          <CardFooter className="flex gap-2">
+          <CardFooter className="flex flex-wrap gap-2">
             {view.game.guessingMode === "drip" && (
               <Button
                 onClick={() => handleAdvance("next")}
@@ -105,43 +106,44 @@ export function GuessingView({
                 </Button>
               </>
             )}
-          </CardFooter>
-        </Card>
-      )}
-
-      <div className="flex flex-col gap-4">
-        {view.songs.map((song, i) => (
-          <SongGuessCard
-            key={song.id}
-            code={code}
-            song={song}
-            position={i + 1}
-            players={view.players}
-            myPlayerId={view.me?.id ?? null}
-            onGuessed={onUpdate}
-          />
-        ))}
-      </div>
-
-      {view.me?.isHost && (
-        <Card>
-          <CardHeader>
-            <CardTitle>End the game</CardTitle>
-            <CardDescription>
-              Locks in results for everyone. You can do this anytime.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
             <Button
               variant="destructive"
               onClick={handleFinish}
               disabled={isFinishing}
+              className="ml-auto"
             >
               {isFinishing ? "Ending..." : "End game & show results"}
             </Button>
           </CardFooter>
         </Card>
       )}
+
+      <Tabs defaultValue="guess">
+        <TabsList>
+          <TabsTrigger value="guess">Guess</TabsTrigger>
+          <TabsTrigger value="playlist">Playlist</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="guess">
+          <div className="flex flex-col gap-4">
+            {view.songs.map((song, i) => (
+              <SongGuessCard
+                key={song.id}
+                code={code}
+                song={song}
+                position={i + 1}
+                players={view.players}
+                myPlayerId={view.me?.id ?? null}
+                onGuessed={onUpdate}
+              />
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="playlist">
+          <PlaylistCard code={code} view={view} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
