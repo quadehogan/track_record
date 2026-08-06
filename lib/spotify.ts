@@ -169,37 +169,25 @@ export async function refreshUserAccessToken(refreshToken: string): Promise<{
   };
 }
 
-export async function getSpotifyProfileId(accessToken: string): Promise<string> {
-  const res = await fetch(`${API_BASE}/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) {
-    await throwSpotifyError(res, "Fetch Spotify profile");
-  }
-  const data = await res.json();
-  return data.id;
-}
-
 export async function createPlaylist(
   accessToken: string,
-  spotifyProfileId: string,
   name: string,
 ): Promise<{ id: string; url: string }> {
-  const res = await fetch(
-    `${API_BASE}/users/${spotifyProfileId}/playlists`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        description: "Created by Track Record",
-        public: false,
-      }),
+  // POST /users/{id}/playlists was retired in Spotify's Feb 2026 Web API
+  // migration; POST /me/playlists is the replacement and infers the user
+  // from the access token, so no separate profile lookup is needed.
+  const res = await fetch(`${API_BASE}/me/playlists`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      name,
+      description: "Created by Track Record",
+      public: false,
+    }),
+  });
   if (!res.ok) {
     await throwSpotifyError(res, "Create Spotify playlist");
   }
@@ -217,7 +205,8 @@ export async function addTracksToPlaylist(
   for (let i = 0; i < uris.length; i += 100) {
     const chunk = uris.slice(i, i + 100);
     const res = await fetch(
-      `${API_BASE}/playlists/${playlistId}/tracks`,
+      // /tracks was retired in Spotify's Feb 2026 migration in favor of /items.
+      `${API_BASE}/playlists/${playlistId}/items`,
       {
         method: "POST",
         headers: {

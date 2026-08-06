@@ -5,7 +5,6 @@ import { requireGameAndPlayer, isGameAccessError } from "@/lib/queries/game-acce
 import { sortSongsByIndex } from "@/lib/game-state";
 import {
   refreshUserAccessToken,
-  getSpotifyProfileId,
   createPlaylist,
   addTracksToPlaylist,
 } from "@/lib/spotify";
@@ -66,10 +65,8 @@ export async function POST(
       })
       .where(eq(spotifyConnections.userId, identity.userId));
 
-    const profileId = await getSpotifyProfileId(refreshed.accessToken);
     const playlist = await createPlaylist(
       refreshed.accessToken,
-      profileId,
       `Track Record — ${game.code}`,
     );
     await addTracksToPlaylist(
