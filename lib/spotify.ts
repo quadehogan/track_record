@@ -1,6 +1,11 @@
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const API_BASE = "https://api.spotify.com/v1";
 
+async function throwSpotifyError(res: Response, action: string): Promise<never> {
+  const body = await res.text().catch(() => "");
+  throw new Error(`${action} failed: ${res.status} ${res.statusText} — ${body}`);
+}
+
 interface CachedAppToken {
   accessToken: string;
   expiresAt: number; // epoch ms
@@ -126,7 +131,7 @@ export async function exchangeCodeForToken(code: string): Promise<{
     }),
   });
   if (!res.ok) {
-    throw new Error(`Failed to exchange Spotify code: ${res.status}`);
+    await throwSpotifyError(res, "Exchange Spotify code");
   }
   const data: UserTokenResponse = await res.json();
   return {
@@ -153,7 +158,7 @@ export async function refreshUserAccessToken(refreshToken: string): Promise<{
     }),
   });
   if (!res.ok) {
-    throw new Error(`Failed to refresh Spotify token: ${res.status}`);
+    await throwSpotifyError(res, "Refresh Spotify token");
   }
   const data: UserTokenResponse = await res.json();
   return {
@@ -169,7 +174,7 @@ export async function getSpotifyProfileId(accessToken: string): Promise<string> 
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) {
-    throw new Error(`Failed to fetch Spotify profile: ${res.status}`);
+    await throwSpotifyError(res, "Fetch Spotify profile");
   }
   const data = await res.json();
   return data.id;
@@ -196,7 +201,7 @@ export async function createPlaylist(
     },
   );
   if (!res.ok) {
-    throw new Error(`Failed to create Spotify playlist: ${res.status}`);
+    await throwSpotifyError(res, "Create Spotify playlist");
   }
   const data = await res.json();
   return { id: data.id, url: data.external_urls.spotify };
@@ -223,7 +228,7 @@ export async function addTracksToPlaylist(
       },
     );
     if (!res.ok) {
-      throw new Error(`Failed to add tracks to playlist: ${res.status}`);
+      await throwSpotifyError(res, "Add tracks to Spotify playlist");
     }
   }
 }

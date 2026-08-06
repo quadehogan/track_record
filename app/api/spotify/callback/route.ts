@@ -39,7 +39,8 @@ export async function GET(request: Request) {
           expiresAt: token.expiresAt,
         },
       });
-  } catch {
+  } catch (err) {
+    console.error("Spotify OAuth callback failed:", err);
     return NextResponse.redirect(`${redirectBase}?spotifyError=1`);
   }
 

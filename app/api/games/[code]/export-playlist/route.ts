@@ -79,7 +79,8 @@ export async function POST(
     );
 
     return NextResponse.json({ playlistUrl: playlist.url });
-  } catch {
+  } catch (err) {
+    console.error("Spotify playlist export failed:", err);
     return NextResponse.json(
       { error: "Failed to export playlist to Spotify" },
       { status: 502 },
