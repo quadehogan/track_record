@@ -68,6 +68,33 @@ export function GuessingView({
 
   return (
     <div className="flex flex-col gap-6">
+      <Tabs defaultValue="guess">
+        <TabsList>
+          <TabsTrigger value="guess">Guess</TabsTrigger>
+          <TabsTrigger value="playlist">Playlist</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="guess">
+          <div className="flex flex-col gap-4">
+            {view.songs.map((song, i) => (
+              <SongGuessCard
+                key={song.id}
+                code={code}
+                song={song}
+                position={i + 1}
+                players={view.players}
+                myPlayerId={view.me?.id ?? null}
+                onGuessed={onUpdate}
+              />
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="playlist">
+          <PlaylistCard code={code} view={view} />
+        </TabsContent>
+      </Tabs>
+
       {view.me?.isHost && (
         <Card>
           <CardHeader>
@@ -117,33 +144,6 @@ export function GuessingView({
           </CardFooter>
         </Card>
       )}
-
-      <Tabs defaultValue="guess">
-        <TabsList>
-          <TabsTrigger value="guess">Guess</TabsTrigger>
-          <TabsTrigger value="playlist">Playlist</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="guess">
-          <div className="flex flex-col gap-4">
-            {view.songs.map((song, i) => (
-              <SongGuessCard
-                key={song.id}
-                code={code}
-                song={song}
-                position={i + 1}
-                players={view.players}
-                myPlayerId={view.me?.id ?? null}
-                onGuessed={onUpdate}
-              />
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="playlist">
-          <PlaylistCard code={code} view={view} />
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
