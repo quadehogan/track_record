@@ -46,7 +46,7 @@ export function ResultsSongList({ view }: { view: GameView }) {
                   key={song.id}
                   className={cn(
                     "flex items-center gap-3 rounded-lg border p-2 ring-1 ring-transparent",
-                    isCorrect && "bg-green-600/8 ring-green-600/25",
+                    isCorrect && "bg-success-bg text-success-foreground ring-success/25",
                     isIncorrect && "bg-destructive/8 ring-destructive/25",
                   )}
                 >
