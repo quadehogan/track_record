@@ -20,8 +20,18 @@ export default function Home() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-10 p-6">
-      <div className="absolute top-4 right-4">
-        {isLoaded && isSignedIn && <UserButton />}
+      <div className="absolute top-4 right-4 flex items-center gap-3">
+        {isLoaded && isSignedIn && (
+          <>
+            <Link
+              href="/account"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Account
+            </Link>
+            <UserButton />
+          </>
+        )}
         {isLoaded && !isSignedIn && (
           <SignInButton>
             <Button variant="outline" size="sm">
@@ -65,6 +75,13 @@ export default function Home() {
           </Button>
         </form>
       </div>
+
+      <Link
+        href="/privacy"
+        className="absolute bottom-4 text-xs text-muted-foreground hover:text-foreground"
+      >
+        Privacy policy
+      </Link>
     </div>
   );
 }
