@@ -2,16 +2,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { games, players } from "@/lib/db/schema";
+import { games, players, rounds } from "@/lib/db/schema";
 import { ensureIdentity } from "@/lib/session";
 import { generateGameCode } from "@/lib/game-state";
 
-const createGameSchema = z.object({
-  hostDisplayName: z.string().trim().min(1).max(40),
-  guessingMode: z.enum(["all_at_once", "drip"]),
-  revealMode: z.enum(["immediate", "end_of_song", "end_of_game"]),
-  submissionDeadline: z.string().datetime().optional(),
-});
+const createGameSchema = z
+  .object({
+    hostDisplayName: z.string().trim().min(1).max(40),
+    format: z.enum(["road_trip", "party"]),
+    totalRounds: z.number().int().min(1).max(20).optional(),
+    submissionDeadline: z.string().datetime().optional(),
+  })
+  .refine((data) => data.format !== "party" || data.totalRounds !== undefined, {
+    message: "totalRounds is required for party games",
+    path: ["totalRounds"],
+  });
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -22,7 +27,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const { hostDisplayName, guessingMode, revealMode, submissionDeadline } =
+  const { hostDisplayName, format, totalRounds, submissionDeadline } =
     parsed.data;
 
   const identity = await ensureIdentity();
@@ -41,22 +46,42 @@ export async function POST(request: Request) {
     .insert(games)
     .values({
       code,
-      guessingMode,
-      revealMode,
+      format,
+      totalRounds: format === "party" ? totalRounds : null,
+      // Road Trip's only supported combination; Party doesn't use these
+      // (its lifecycle is driven by `rounds` instead) but the columns are
+      // NOT NULL, so both formats get the same harmless default.
+      guessingMode: "all_at_once",
+      revealMode: "end_of_game",
       submissionDeadline: submissionDeadline
         ? new Date(submissionDeadline)
         : null,
     })
     .returning();
 
-  await db.insert(players).values({
-    gameId: game.id,
-    userId: identity.type === "user" ? identity.userId : null,
-    guestSessionId: identity.type === "guest" ? identity.guestSessionId : null,
-    displayName: hostDisplayName,
-    isHost: true,
-    joinedAtSongIndex: 0,
-  });
+  const [host] = await db
+    .insert(players)
+    .values({
+      gameId: game.id,
+      userId: identity.type === "user" ? identity.userId : null,
+      guestSessionId:
+        identity.type === "guest" ? identity.guestSessionId : null,
+      displayName: hostDisplayName,
+      isHost: true,
+      joinedAtSongIndex: 0,
+      joinedAtRoundIndex: 0,
+    })
+    .returning();
+
+  if (format === "party") {
+    await db.insert(rounds).values({
+      gameId: game.id,
+      roundIndex: 0,
+      prompt: "",
+      promptSetterPlayerId: host.id,
+      status: "awaiting_prompt",
+    });
+  }
 
   return NextResponse.json({ code: game.code }, { status: 201 });
 }

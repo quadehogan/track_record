@@ -17,34 +17,16 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 
-const GUESSING_MODES = [
+const FORMATS = [
   {
-    value: "all_at_once",
-    label: "All at once",
-    description: "Every song is available to guess as soon as submissions close.",
+    value: "road_trip",
+    label: "Road trip",
+    description: "One big shared playlist — everyone submits songs, then guess who submitted what, at your own pace.",
   },
   {
-    value: "drip",
-    label: "Drip",
-    description: "Songs unlock one at a time as the host advances the game.",
-  },
-] as const;
-
-const REVEAL_MODES = [
-  {
-    value: "immediate",
-    label: "Immediate",
-    description: "See who submitted a song right after you guess it.",
-  },
-  {
-    value: "end_of_song",
-    label: "End of song",
-    description: "The answer reveals once everyone has guessed, or the host advances.",
-  },
-  {
-    value: "end_of_game",
-    label: "End of game",
-    description: "No reveals until the host ends the whole game.",
+    value: "party",
+    label: "Party",
+    description: "Play in rounds. Each round someone sets a prompt (like \"songs to get ready to\"), everyone submits a song to match, then you guess.",
   },
 ] as const;
 
@@ -52,10 +34,9 @@ export default function CreateGamePage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const [hostDisplayName, setHostDisplayName] = useState("");
-  const [guessingMode, setGuessingMode] =
-    useState<(typeof GUESSING_MODES)[number]["value"]>("all_at_once");
-  const [revealMode, setRevealMode] =
-    useState<(typeof REVEAL_MODES)[number]["value"]>("immediate");
+  const [format, setFormat] =
+    useState<(typeof FORMATS)[number]["value"]>("road_trip");
+  const [totalRounds, setTotalRounds] = useState(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultName = isLoaded
@@ -76,8 +57,8 @@ export default function CreateGamePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hostDisplayName: name,
-          guessingMode,
-          revealMode,
+          format,
+          totalRounds: format === "party" ? totalRounds : undefined,
         }),
       });
       if (!res.ok) {
@@ -99,8 +80,7 @@ export default function CreateGamePage() {
           <CardHeader>
             <CardTitle>Create a game</CardTitle>
             <CardDescription>
-              Configure how submissions and guessing will work. Players join
-              async via a link or code once you&apos;re done.
+              Players join async via a link or code once you&apos;re done.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
@@ -116,23 +96,21 @@ export default function CreateGamePage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <Label>Guessing mode</Label>
+              <Label>Game type</Label>
               <RadioGroup
-                value={guessingMode}
-                onValueChange={(value) =>
-                  setGuessingMode(value as typeof guessingMode)
-                }
+                value={format}
+                onValueChange={(value) => setFormat(value as typeof format)}
               >
-                {GUESSING_MODES.map((mode) => (
+                {FORMATS.map((f) => (
                   <label
-                    key={mode.value}
+                    key={f.value}
                     className="flex items-start gap-3 rounded-lg border p-3 has-data-checked:border-primary"
                   >
-                    <RadioGroupItem value={mode.value} className="mt-1" />
+                    <RadioGroupItem value={f.value} className="mt-1" />
                     <span className="flex flex-col gap-0.5">
-                      <span className="text-sm font-medium">{mode.label}</span>
+                      <span className="text-sm font-medium">{f.label}</span>
                       <span className="text-xs text-muted-foreground">
-                        {mode.description}
+                        {f.description}
                       </span>
                     </span>
                   </label>
@@ -140,30 +118,24 @@ export default function CreateGamePage() {
               </RadioGroup>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <Label>Reveal mode</Label>
-              <RadioGroup
-                value={revealMode}
-                onValueChange={(value) =>
-                  setRevealMode(value as typeof revealMode)
-                }
-              >
-                {REVEAL_MODES.map((mode) => (
-                  <label
-                    key={mode.value}
-                    className="flex items-start gap-3 rounded-lg border p-3 has-data-checked:border-primary"
-                  >
-                    <RadioGroupItem value={mode.value} className="mt-1" />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="text-sm font-medium">{mode.label}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {mode.description}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </RadioGroup>
-            </div>
+            {format === "party" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="totalRounds">Number of rounds</Label>
+                <Input
+                  id="totalRounds"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={totalRounds}
+                  onChange={(e) =>
+                    setTotalRounds(
+                      Math.min(20, Math.max(1, Number(e.target.value) || 1)),
+                    )
+                  }
+                  className="max-w-24"
+                />
+              </div>
+            )}
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={isSubmitting} className="w-full">

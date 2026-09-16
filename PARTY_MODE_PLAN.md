@@ -59,18 +59,32 @@ existing "Road Trip" format. Update checkboxes as work lands; keep the
 - [x] `lib/prompts.ts`: 50 premade prompts
 - [x] `npx tsc --noEmit` and `next build` both clean
 
-## Chunk 2 — Party creation, prompt-setting, submission
+## Chunk 2 — Party creation, prompt-setting, submission ✅ done
 
-- [ ] Simplify `/game/create`: single Road Trip vs Party radio, remove
+- [x] Simplify `/game/create`: single Road Trip vs Party radio, removed
       the old guessing-mode/reveal-mode radios entirely
-- [ ] Party creation: round-count picker
-- [ ] `POST /api/games` branches on format: Party creates round 1 and
-      assigns the first prompt-setter
-- [ ] New "set the prompt" screen/state for whoever's turn it is (custom
-      text input or pick-from-50)
-- [ ] New API route to submit a round's prompt
-- [ ] Submission screen shows the active round's prompt; song submission
-      scoped to the current round
+- [x] Party creation: round-count picker (1-20, default 5)
+- [x] `POST /api/games` branches on format: Party creates round 1
+      (`roundIndex: 0`) and assigns the host as first prompt-setter
+- [x] New "set the prompt" screen for whoever's turn it is — custom text
+      input plus a "🎲 Random prompt" button that fills from the 50-prompt
+      bank (still editable before submitting)
+- [x] New API route `POST /api/games/[code]/rounds/prompt`
+- [x] Submission screen shows the active round's prompt; submission is
+      capped at one song per player per round (409 on a second attempt),
+      scoped to `songs.roundId`
+- [x] `game-view.ts` now exposes `game.format` and a `round` object
+      (index, total, prompt, status, whose turn, isMyTurn); `mySubmittedSongs`
+      / `submittedCount` are round-scoped for Party
+- [x] Host sees a placeholder ("Round transitions are coming in the next
+      update") instead of a working close-submissions button for Party —
+      intentional, that's Chunk 3
+- [x] Verified end-to-end in the browser: Road Trip creation/flow
+      unaffected; Party round 1 prompt-setting (host), random-prompt fill,
+      song submission, cross-player round-scoping via a second joined
+      player, duplicate-submission rejection (409), and remove-then-resubmit
+      all confirmed working
+- [x] `npx tsc --noEmit` and `next build` both clean
 
 ## Chunk 3 — Party guessing, reveal, round advancement
 

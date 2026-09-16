@@ -4,6 +4,7 @@ import { games, players, songs, guesses, songReactions, spotifyConnections } fro
 import type { Identity } from "@/lib/session";
 import { isSongEligibleForPlayer } from "@/lib/scoring";
 import { shouldRevealSong } from "@/lib/game-state";
+import { getCurrentRound } from "@/lib/queries/rounds";
 
 export interface GameViewSong {
   id: string;
@@ -20,15 +21,27 @@ export interface GameViewSong {
   myReaction: string | null;
 }
 
+export interface GameViewRound {
+  roundIndex: number;
+  totalRounds: number;
+  prompt: string;
+  status: "awaiting_prompt" | "submitting" | "guessing" | "revealed";
+  promptSetterPlayerId: string;
+  promptSetterDisplayName: string;
+  isMyTurn: boolean;
+}
+
 export interface GameView {
   game: {
     code: string;
     status: "submitting" | "guessing" | "finished";
+    format: "road_trip" | "party";
     guessingMode: "all_at_once" | "drip";
     revealMode: "immediate" | "end_of_song" | "end_of_game";
     submissionDeadline: string | null;
     currentSongPointer: number;
   };
+  round: GameViewRound | null;
   me: {
     id: string;
     displayName: string;
@@ -168,9 +181,30 @@ export async function getGameView(
         })
       : undefined;
 
+  const currentRound =
+    game.format === "party" ? await getCurrentRound(db, game.id) : undefined;
+
+  const roundView: GameView["round"] = currentRound
+    ? {
+        roundIndex: currentRound.roundIndex,
+        totalRounds: game.totalRounds ?? 0,
+        prompt: currentRound.prompt,
+        status: currentRound.status,
+        promptSetterPlayerId: currentRound.promptSetterPlayerId,
+        promptSetterDisplayName:
+          allPlayers.find((p) => p.id === currentRound.promptSetterPlayerId)
+            ?.displayName ?? "",
+        isMyTurn: me?.id === currentRound.promptSetterPlayerId,
+      }
+    : null;
+
   const mySubmittedSongs = me
     ? allSongs
-        .filter((s) => s.submittedByPlayerId === me.id)
+        .filter(
+          (s) =>
+            s.submittedByPlayerId === me.id &&
+            (game.format !== "party" || s.roundId === currentRound?.id),
+        )
         .map(buildSongView)
     : [];
 
@@ -183,15 +217,22 @@ export async function getGameView(
           .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
           .map(buildSongView);
 
+  const submittedCount =
+    game.format === "party"
+      ? allSongs.filter((s) => s.roundId === currentRound?.id).length
+      : allSongs.length;
+
   return {
     game: {
       code: game.code,
       status: game.status,
+      format: game.format,
       guessingMode: game.guessingMode,
       revealMode: game.revealMode,
       submissionDeadline: game.submissionDeadline?.toISOString() ?? null,
       currentSongPointer: game.currentSongPointer,
     },
+    round: roundView,
     me: me
       ? {
           id: me.id,
@@ -222,6 +263,6 @@ export async function getGameView(
     }),
     songs: visibleSongs,
     mySubmittedSongs,
-    submittedCount: allSongs.length,
+    submittedCount,
   };
 }

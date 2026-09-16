@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { songs } from "@/lib/db/schema";
 import { getGameView } from "@/lib/queries/game-view";
+import { getCurrentRound } from "@/lib/queries/rounds";
 import { requireGameAndPlayer, isGameAccessError } from "@/lib/queries/game-access";
 
 const submitSongSchema = z.object({
@@ -43,8 +44,33 @@ export async function POST(
     );
   }
 
+  let roundId: string | null = null;
+  if (game.format === "party") {
+    const round = await getCurrentRound(db, game.id);
+    if (!round || round.status !== "submitting") {
+      return NextResponse.json(
+        { error: "Waiting for this round's prompt to be set" },
+        { status: 409 },
+      );
+    }
+    const existing = await db.query.songs.findFirst({
+      where: and(
+        eq(songs.roundId, round.id),
+        eq(songs.submittedByPlayerId, me.id),
+      ),
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: "You've already submitted a song for this round" },
+        { status: 409 },
+      );
+    }
+    roundId = round.id;
+  }
+
   await db.insert(songs).values({
     gameId: game.id,
+    roundId,
     submittedByPlayerId: me.id,
     spotifyTrackId: parsed.data.spotifyTrackId,
     trackName: parsed.data.trackName,
@@ -89,6 +115,12 @@ export async function DELETE(
   });
   if (!song || song.gameId !== game.id || song.submittedByPlayerId !== me.id) {
     return NextResponse.json({ error: "Song not found" }, { status: 404 });
+  }
+  if (game.format === "party") {
+    const round = await getCurrentRound(db, game.id);
+    if (!round || song.roundId !== round.id) {
+      return NextResponse.json({ error: "Song not found" }, { status: 404 });
+    }
   }
 
   await db.delete(songs).where(eq(songs.id, songId));
