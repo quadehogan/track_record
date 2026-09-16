@@ -44,7 +44,7 @@ export function computePlayerScore(
 }
 
 /** Ranks by accuracy first (per spec: don't just rank by raw score), raw score as tiebreaker. */
-export function rankPlayerScores(scores: PlayerScore[]): PlayerScore[] {
+export function rankPlayerScores<T extends PlayerScore>(scores: T[]): T[] {
   return [...scores].sort((a, b) => {
     if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
     return b.rawScore - a.rawScore;

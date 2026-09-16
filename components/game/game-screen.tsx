@@ -75,7 +75,7 @@ export function GameScreen({
         <GuessingView code={code} view={view} onUpdate={(v) => mutate(v, false)} />
       )}
       {view.game.status === "finished" && (
-        <FinishedView code={code} view={view} />
+        <FinishedView code={code} view={view} onUpdate={(v) => mutate(v, false)} />
       )}
     </div>
   );

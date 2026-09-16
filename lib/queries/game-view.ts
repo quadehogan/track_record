@@ -1,6 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { games, players, songs, guesses, spotifyConnections } from "@/lib/db/schema";
+import { games, players, songs, guesses, songReactions, spotifyConnections } from "@/lib/db/schema";
 import type { Identity } from "@/lib/session";
 import { isSongEligibleForPlayer } from "@/lib/scoring";
 import { shouldRevealSong } from "@/lib/game-state";
@@ -16,6 +16,8 @@ export interface GameViewSong {
   eligible: boolean;
   myGuessedPlayerId: string | null;
   revealedSubmitter: { playerId: string; displayName: string } | null;
+  reactions: Array<{ emoji: string; count: number }>;
+  myReaction: string | null;
 }
 
 export interface GameView {
@@ -35,7 +37,12 @@ export interface GameView {
     joinedAtSongIndex: number;
     spotifyConnected: boolean;
   } | null;
-  players: Array<{ id: string; displayName: string; isHost: boolean }>;
+  players: Array<{
+    id: string;
+    displayName: string;
+    isHost: boolean;
+    guessProgress: { done: number; total: number };
+  }>;
   songs: GameViewSong[];
   mySubmittedSongs: GameViewSong[];
   submittedCount: number;
@@ -71,6 +78,11 @@ export async function getGameView(
   const allGuesses = songIds.length
     ? await db.query.guesses.findMany({
         where: inArray(guesses.songId, songIds),
+      })
+    : [];
+  const allReactions = songIds.length
+    ? await db.query.songReactions.findMany({
+        where: inArray(songReactions.songId, songIds),
       })
     : [];
 
@@ -114,6 +126,25 @@ export async function getGameView(
       }
     }
 
+    let reactions: GameViewSong["reactions"] = [];
+    let myReaction: string | null = null;
+    if (revealed) {
+      const reactionsForSong = allReactions.filter(
+        (r) => r.songId === song.id,
+      );
+      const counts = new Map<string, number>();
+      for (const r of reactionsForSong) {
+        counts.set(r.emoji, (counts.get(r.emoji) ?? 0) + 1);
+      }
+      reactions = [...counts.entries()].map(([emoji, count]) => ({
+        emoji,
+        count,
+      }));
+      myReaction = me
+        ? (reactionsForSong.find((r) => r.playerId === me.id)?.emoji ?? null)
+        : null;
+    }
+
     return {
       id: song.id,
       trackName: song.trackName,
@@ -125,6 +156,8 @@ export async function getGameView(
       eligible,
       myGuessedPlayerId: myGuess?.guessedPlayerId ?? null,
       revealedSubmitter,
+      reactions,
+      myReaction,
     };
   };
 
@@ -169,11 +202,24 @@ export async function getGameView(
           spotifyConnected: Boolean(spotifyConnection),
         }
       : null,
-    players: allPlayers.map((p) => ({
-      id: p.id,
-      displayName: p.displayName,
-      isHost: p.isHost,
-    })),
+    players: allPlayers.map((p) => {
+      const eligibleOpenSongs = allSongs.filter(
+        (s) =>
+          isSongEligibleForPlayer(s.index, p.joinedAtSongIndex) &&
+          s.unlockState === "open",
+      );
+      const done = eligibleOpenSongs.filter((s) =>
+        allGuesses.some(
+          (g) => g.songId === s.id && g.guesserPlayerId === p.id,
+        ),
+      ).length;
+      return {
+        id: p.id,
+        displayName: p.displayName,
+        isHost: p.isHost,
+        guessProgress: { done, total: eligibleOpenSongs.length },
+      };
+    }),
     songs: visibleSongs,
     mySubmittedSongs,
     submittedCount: allSongs.length,

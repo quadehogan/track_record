@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   DndContext,
@@ -103,6 +103,22 @@ export function GuessingView({
               </CardDescription>
             )}
           </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {view.players.map((p) => (
+              <span
+                key={p.id}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs",
+                  p.guessProgress.total > 0 &&
+                    p.guessProgress.done === p.guessProgress.total
+                    ? "border-success/40 bg-success-bg text-success-foreground"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                {p.displayName} {p.guessProgress.done}/{p.guessProgress.total}
+              </span>
+            ))}
+          </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
             {view.game.guessingMode === "drip" && (
               <Button
@@ -138,9 +154,27 @@ function GuessBoard({
 }) {
   const [pendingSongId, setPendingSongId] = useState<string | null>(null);
   const [activeSongId, setActiveSongId] = useState<string | null>(null);
+  const [justRevealedIds, setJustRevealedIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const revealedIdsRef = useRef<Set<string>>(new Set());
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
+
+  useEffect(() => {
+    const currentlyRevealed = new Set(
+      view.songs.filter((s) => s.revealedSubmitter).map((s) => s.id),
+    );
+    const newlyRevealed = new Set(
+      [...currentlyRevealed].filter((id) => !revealedIdsRef.current.has(id)),
+    );
+    revealedIdsRef.current = currentlyRevealed;
+    if (newlyRevealed.size === 0) return;
+    setJustRevealedIds(newlyRevealed);
+    const timeout = setTimeout(() => setJustRevealedIds(new Set()), 500);
+    return () => clearTimeout(timeout);
+  }, [view.songs]);
 
   const eligibleSongs = view.songs.filter((s) => s.eligible);
   const queue = eligibleSongs.filter(
@@ -231,6 +265,7 @@ function GuessBoard({
               player={p}
               songs={placedByPlayer.get(p.id) ?? []}
               pendingSongId={pendingSongId}
+              justRevealedIds={justRevealedIds}
             />
           ))}
         </div>
@@ -322,10 +357,12 @@ function PlayerBucket({
   player,
   songs,
   pendingSongId,
+  justRevealedIds,
 }: {
   player: GameView["players"][number];
   songs: GameViewSong[];
   pendingSongId: string | null;
+  justRevealedIds: Set<string>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: player.id });
 
@@ -346,6 +383,7 @@ function PlayerBucket({
             key={s.id}
             song={s}
             disabled={pendingSongId === s.id}
+            justRevealed={justRevealedIds.has(s.id)}
           />
         ))}
       </div>
@@ -356,9 +394,11 @@ function PlayerBucket({
 function PlacedSong({
   song,
   disabled,
+  justRevealed,
 }: {
   song: GameViewSong;
   disabled: boolean;
+  justRevealed: boolean;
 }) {
   const editable = song.unlockState === "open" && !song.revealedSubmitter;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -381,6 +421,7 @@ function PlacedSong({
           (song.myGuessedPlayerId === song.revealedSubmitter.playerId
             ? "ring-2 ring-success"
             : "ring-2 ring-destructive"),
+        justRevealed && "animate-reveal-pop",
       )}
     >
       <SongArt song={song} size={40} />

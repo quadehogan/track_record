@@ -17,16 +17,22 @@ import type { PlayerScore } from "@/lib/scoring";
 import { ExportPlaylistButton } from "@/components/game/export-playlist-button";
 import { ResultsSongList } from "@/components/game/results-song-list";
 
+interface PlayerScoreWithBadges extends PlayerScore {
+  perfectReads: string[];
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function FinishedView({
   code,
   view,
+  onUpdate,
 }: {
   code: string;
   view: GameView;
+  onUpdate: (view: GameView) => void;
 }) {
-  const { data } = useSWR<{ scores: PlayerScore[] }>(
+  const { data } = useSWR<{ scores: PlayerScoreWithBadges[] }>(
     `/api/games/${code}/results`,
     fetcher,
   );
@@ -59,8 +65,13 @@ export function FinishedView({
                     <span className="w-6 text-center text-sm font-medium text-muted-foreground">
                       {i + 1}
                     </span>
-                    <span className="flex-1 font-medium">
-                      {score.displayName}
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="font-medium">{score.displayName}</span>
+                      {score.perfectReads.length > 0 && (
+                        <span className="truncate text-xs text-muted-foreground">
+                          🎯 Nailed {score.perfectReads.join(" & ")}&apos;s songs
+                        </span>
+                      )}
                     </span>
                     <Badge variant="secondary">
                       {Math.round(score.accuracy * 100)}% accuracy
@@ -99,7 +110,7 @@ export function FinishedView({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResultsSongList view={view} />
+              <ResultsSongList code={code} view={view} onUpdate={onUpdate} />
             </CardContent>
           </Card>
         </TabsContent>

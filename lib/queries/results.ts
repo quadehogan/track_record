@@ -1,7 +1,17 @@
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { games, players, songs, guesses } from "@/lib/db/schema";
-import { countEligibleSongs, computePlayerScore, rankPlayerScores } from "@/lib/scoring";
+import {
+  countEligibleSongs,
+  computePlayerScore,
+  rankPlayerScores,
+  isSongEligibleForPlayer,
+  type PlayerScore,
+} from "@/lib/scoring";
+
+export interface PlayerScoreWithBadges extends PlayerScore {
+  perfectReads: string[];
+}
 
 export async function getGameResults(code: string) {
   const db = getDb();
@@ -24,7 +34,7 @@ export async function getGameResults(code: string) {
       })
     : [];
 
-  const scores = allPlayers.map((player) => {
+  const scores: PlayerScoreWithBadges[] = allPlayers.map((player) => {
     const correctGuessCount = allGuesses.filter(
       (g) => g.guesserPlayerId === player.id && g.isCorrect,
     ).length;
@@ -32,7 +42,7 @@ export async function getGameResults(code: string) {
       songIndices,
       player.joinedAtSongIndex,
     );
-    return computePlayerScore(
+    const score = computePlayerScore(
       {
         playerId: player.id,
         displayName: player.displayName,
@@ -41,6 +51,29 @@ export async function getGameResults(code: string) {
       },
       eligibleSongs,
     );
+
+    // "Perfect read": every eligible song from a given submitter, guessed correctly.
+    const perfectReads = allPlayers
+      .filter((submitter) => submitter.id !== player.id)
+      .filter((submitter) => {
+        const submitterSongs = allSongs.filter(
+          (s) =>
+            s.submittedByPlayerId === submitter.id &&
+            isSongEligibleForPlayer(s.index, player.joinedAtSongIndex),
+        );
+        if (submitterSongs.length === 0) return false;
+        return submitterSongs.every((s) =>
+          allGuesses.some(
+            (g) =>
+              g.songId === s.id &&
+              g.guesserPlayerId === player.id &&
+              g.isCorrect,
+          ),
+        );
+      })
+      .map((submitter) => submitter.displayName);
+
+    return { ...score, perfectReads };
   });
 
   return {
