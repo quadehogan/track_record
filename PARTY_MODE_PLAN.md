@@ -86,16 +86,52 @@ existing "Road Trip" format. Update checkboxes as work lands; keep the
       all confirmed working
 - [x] `npx tsc --noEmit` and `next build` both clean
 
-## Chunk 3 — Party guessing, reveal, round advancement
+## Chunk 3 — Party guessing, reveal, round advancement ✅ done
 
-- [ ] `game-view.ts`: scope songs/guessing to the current round for
-      Party games
-- [ ] Guess board works against round-scoped songs (reuse existing
-      drag-and-drop component, just filtered)
-- [ ] Round reveal once all eligible players have guessed that round
-- [ ] "Next round" transition: rotate prompt-setter, create next round,
-      back to the prompt-setting screen
-- [ ] Auto-finish game after the final round's reveal
+- [x] `game-view.ts`: songs scoped to the current round while a Party
+      round is being guessed; all rounds' songs once the game is finished
+- [x] Guess board works unchanged against round-scoped songs (no
+      component changes needed — it just receives a smaller `songs` list)
+- [x] Round reveal happens automatically once every eligible player has
+      guessed that round (fixed a bug from chunk 2: Party games were
+      created with `revealMode: end_of_game`, which would've silently
+      withheld every answer until the whole game ended — corrected to
+      `end_of_song`, which reveals per-round as designed)
+- [x] Eligibility is now round-aware end to end: added
+      `getEligiblePlayerIds` (lib/game-state.ts) so Road Trip's
+      song-index eligibility and Party's round-index eligibility share
+      one code path instead of duplicating the "who's eligible to guess
+      this" logic per call site (game-view.ts, the guess route, and the
+      per-player progress chips all use it now). `join` now also stamps
+      `joinedAtRoundIndex` for late joiners.
+- [x] `close-submissions` and `finish` both branch on `game.format`:
+      Party scopes the shuffle/unlock to the current round only, and
+      `finish` now doubles as "end this round" — it closes the round's
+      songs (forcing reveal for stragglers), and either rotates to the
+      next round (new prompt-setter via `getPromptSetterForRound`, back
+      to `awaiting_prompt`) or marks the game finished if it was the
+      last round
+      - Note: Round-count-based "last round" is the only way a Party
+        game auto-finishes right now (matches the confirmed decision:
+        host sets the round count upfront)
+- [x] `guessing-view.tsx`: round header + prompt shown above the guess
+      board; the button now reads "End round & continue" mid-game vs
+      "End game & show results" on the last round (same endpoint)
+- [x] Verified end-to-end in the browser: full 2-round Party game,
+      prompt-setter rotation (host → Sam) confirmed correct, automatic
+      per-round reveal on last guess confirmed, round-scoped guess board
+      confirmed (no cross-round song leakage), final leaderboard/results
+      screen aggregates correctly across both rounds using the *existing*
+      results/leaderboard code unchanged (4/4 and 2/4 scores matched
+      exactly what was guessed)
+- [x] `npx tsc --noEmit` and `next build` both clean
+
+**Known, deliberately deferred to chunk 4**: `lib/scoring.ts`'s
+`countEligibleSongs` still uses song-index eligibility for the results
+leaderboard's denominator, which is only correct for Party when nobody
+joins mid-game (every song's index passes trivially). A late joiner's
+"eligible songs" count will be wrong until chunk 4 makes it round-aware
+too. Not a crash risk, just an inaccurate number for that one scenario.
 
 ## Chunk 4 — Results integration, polish, verification
 

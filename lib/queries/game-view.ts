@@ -1,9 +1,8 @@
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { games, players, songs, guesses, songReactions, spotifyConnections } from "@/lib/db/schema";
+import { games, players, songs, guesses, songReactions, rounds, spotifyConnections } from "@/lib/db/schema";
 import type { Identity } from "@/lib/session";
-import { isSongEligibleForPlayer } from "@/lib/scoring";
-import { shouldRevealSong } from "@/lib/game-state";
+import { shouldRevealSong, getEligiblePlayerIds } from "@/lib/game-state";
 import { getCurrentRound } from "@/lib/queries/rounds";
 
 export interface GameViewSong {
@@ -87,6 +86,18 @@ export async function getGameView(
     where: eq(songs.gameId, game.id),
   });
 
+  const allRounds =
+    game.format === "party"
+      ? await db.query.rounds.findMany({ where: eq(rounds.gameId, game.id) })
+      : [];
+  const roundIndexById = new Map(allRounds.map((r) => [r.id, r.roundIndex]));
+
+  /** Road Trip keys eligibility off the song's own index; Party off its round's index. */
+  const eligibilityKeyFor = (song: { index: number | null; roundId: string | null }) =>
+    game.format === "party"
+      ? (song.roundId ? (roundIndexById.get(song.roundId) ?? null) : null)
+      : song.index;
+
   const songIds = allSongs.map((s) => s.id);
   const allGuesses = songIds.length
     ? await db.query.guesses.findMany({
@@ -100,9 +111,12 @@ export async function getGameView(
     : [];
 
   const buildSongView = (song: (typeof allSongs)[number]): GameViewSong => {
-    const eligible = me
-      ? isSongEligibleForPlayer(song.index, me.joinedAtSongIndex)
-      : false;
+    const eligiblePlayerIds = getEligiblePlayerIds(
+      game.format,
+      eligibilityKeyFor(song),
+      allPlayers,
+    );
+    const eligible = me ? eligiblePlayerIds.includes(me.id) : false;
     const myGuess = me
       ? (allGuesses.find(
           (g) => g.songId === song.id && g.guesserPlayerId === me.id,
@@ -110,11 +124,9 @@ export async function getGameView(
       : null;
 
     const guessesForSong = allGuesses.filter((g) => g.songId === song.id);
-    const eligiblePlayerCount = allPlayers.filter((p) =>
-      isSongEligibleForPlayer(song.index, p.joinedAtSongIndex),
-    ).length;
     const allEligiblePlayersGuessed =
-      eligiblePlayerCount > 0 && guessesForSong.length >= eligiblePlayerCount;
+      eligiblePlayerIds.length > 0 &&
+      guessesForSong.length >= eligiblePlayerIds.length;
 
     const revealed =
       game.status === "finished" ||
@@ -209,11 +221,16 @@ export async function getGameView(
     : [];
 
   // During submission, hide other players' songs entirely (anonymity + no spoilers).
-  // Once guessing has started the full, index-ordered list is visible to everyone.
+  // Once guessing has started, the full list is visible — for Party, scoped to
+  // the round currently being guessed; once finished, every round's songs.
+  const songsForCurrentPhase =
+    game.format === "party" && game.status === "guessing"
+      ? allSongs.filter((s) => s.roundId === currentRound?.id)
+      : allSongs;
   const visibleSongs =
     game.status === "submitting"
       ? mySubmittedSongs
-      : [...allSongs]
+      : [...songsForCurrentPhase]
           .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
           .map(buildSongView);
 
@@ -246,8 +263,10 @@ export async function getGameView(
     players: allPlayers.map((p) => {
       const eligibleOpenSongs = allSongs.filter(
         (s) =>
-          isSongEligibleForPlayer(s.index, p.joinedAtSongIndex) &&
-          s.unlockState === "open",
+          s.unlockState === "open" &&
+          getEligiblePlayerIds(game.format, eligibilityKeyFor(s), allPlayers).includes(
+            p.id,
+          ),
       );
       const done = eligibleOpenSongs.filter((s) =>
         allGuesses.some(

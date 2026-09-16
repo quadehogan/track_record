@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { songs } from "@/lib/db/schema";
+import { songs, rounds } from "@/lib/db/schema";
 import { getGameView } from "@/lib/queries/game-view";
+import { getCurrentRound } from "@/lib/queries/rounds";
 import { requireGameAndPlayer, isGameAccessError } from "@/lib/queries/game-access";
 import { shuffle, initialUnlockStates } from "@/lib/game-state";
 import { games as gamesTable } from "@/lib/db/schema";
@@ -33,9 +34,20 @@ export async function POST(
     );
   }
 
-  const allSongs = await db.query.songs.findMany({
-    where: eq(songs.gameId, game.id),
-  });
+  let round;
+  if (game.format === "party") {
+    round = await getCurrentRound(db, game.id);
+    if (!round || round.status !== "submitting") {
+      return NextResponse.json(
+        { error: "This round isn't ready to close" },
+        { status: 409 },
+      );
+    }
+  }
+
+  const allSongs = round
+    ? await db.query.songs.findMany({ where: eq(songs.roundId, round.id) })
+    : await db.query.songs.findMany({ where: eq(songs.gameId, game.id) });
   if (allSongs.length === 0) {
     return NextResponse.json(
       { error: "At least one song must be submitted first" },
@@ -59,6 +71,13 @@ export async function POST(
         .where(eq(songs.id, song.id)),
     ),
   );
+
+  if (round) {
+    await db
+      .update(rounds)
+      .set({ status: "guessing" })
+      .where(eq(rounds.id, round.id));
+  }
 
   await db
     .update(gamesTable)

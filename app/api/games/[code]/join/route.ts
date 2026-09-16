@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { games, players } from "@/lib/db/schema";
 import { ensureIdentity } from "@/lib/session";
 import { getGameView } from "@/lib/queries/game-view";
+import { getCurrentRound } from "@/lib/queries/rounds";
 
 const joinSchema = z.object({
   displayName: z.string().trim().min(1).max(40),
@@ -50,6 +51,8 @@ export async function POST(
   );
 
   if (!alreadyJoined) {
+    const currentRound =
+      game.format === "party" ? await getCurrentRound(db, game.id) : undefined;
     await db.insert(players).values({
       gameId: game.id,
       userId: identity.type === "user" ? identity.userId : null,
@@ -57,8 +60,9 @@ export async function POST(
         identity.type === "guest" ? identity.guestSessionId : null,
       displayName: parsed.data.displayName,
       isHost: false,
-      // Late-joiner snapshot: eligible only for songs unlocked from this point forward.
+      // Late-joiner snapshot: eligible only for songs/rounds from this point forward.
       joinedAtSongIndex: game.currentSongPointer,
+      joinedAtRoundIndex: currentRound?.roundIndex ?? 0,
     });
   }
 

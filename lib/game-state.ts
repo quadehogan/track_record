@@ -1,4 +1,5 @@
 import type { Song } from "@/lib/db/schema";
+import { isSongEligibleForPlayer } from "@/lib/scoring";
 
 /** Short, easy-to-read shareable code (excludes ambiguous chars like 0/O, 1/I). */
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -92,4 +93,26 @@ export function isRoundEligibleForPlayer(
   joinedAtRoundIndex: number,
 ): boolean {
   return roundIndex >= joinedAtRoundIndex;
+}
+
+/**
+ * Which players are eligible to guess a given song: Road Trip keys eligibility
+ * off the song's own index, Party off the round it belongs to (every song in a
+ * round shares the same eligibility set). `eligibilityKey` is `song.index` for
+ * Road Trip or the song's round's `roundIndex` for Party — pass `null` if the
+ * key can't be resolved (e.g. an orphaned song), which yields no eligible players.
+ */
+export function getEligiblePlayerIds(
+  format: GameFormat,
+  eligibilityKey: number | null,
+  allPlayers: Array<{ id: string; joinedAtSongIndex: number; joinedAtRoundIndex: number }>,
+): string[] {
+  if (eligibilityKey === null) return [];
+  return allPlayers
+    .filter((p) =>
+      format === "party"
+        ? isRoundEligibleForPlayer(eligibilityKey, p.joinedAtRoundIndex)
+        : isSongEligibleForPlayer(eligibilityKey, p.joinedAtSongIndex),
+    )
+    .map((p) => p.id);
 }

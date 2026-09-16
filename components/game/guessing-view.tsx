@@ -75,9 +75,22 @@ export function GuessingView({
   }
 
   const hasLockedSong = view.songs.some((s) => s.unlockState === "locked");
+  const isLastRound =
+    !view.round || view.round.roundIndex + 1 >= view.round.totalRounds;
 
   return (
     <div className="flex flex-col gap-6">
+      {view.round && (
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Round {view.round.roundIndex + 1} of {view.round.totalRounds}
+          </p>
+          <p className="text-base font-medium">
+            &ldquo;{view.round.prompt}&rdquo;
+          </p>
+        </div>
+      )}
+
       <Tabs defaultValue="guess">
         <TabsList>
           <TabsTrigger value="guess">Guess</TabsTrigger>
@@ -134,7 +147,11 @@ export function GuessingView({
               disabled={isFinishing}
               className="ml-auto"
             >
-              {isFinishing ? "Ending..." : "End game & show results"}
+              {isFinishing
+                ? "Ending..."
+                : isLastRound
+                  ? "End game & show results"
+                  : "End round & continue"}
             </Button>
           </CardFooter>
         </Card>

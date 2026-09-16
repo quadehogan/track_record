@@ -290,6 +290,26 @@ function PartySubmittingView({
     setPromptText(pick);
   }
 
+  const [isClosing, setIsClosing] = useState(false);
+
+  async function handleCloseRound() {
+    setIsClosing(true);
+    try {
+      const res = await fetch(`/api/games/${code}/close-submissions`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Failed to close this round");
+        return;
+      }
+      onUpdate(await res.json());
+      toast.success("Round submissions closed — guessing has started!");
+    } finally {
+      setIsClosing(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm text-muted-foreground">
@@ -424,9 +444,18 @@ function PartySubmittingView({
             <CardTitle>Host controls</CardTitle>
             <CardDescription>
               {view.submittedCount} of {view.players.length} songs submitted
-              this round. Round transitions are coming in the next update.
+              this round. Closing locks this round&apos;s songs and starts
+              guessing.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleCloseRound}
+              disabled={isClosing || view.submittedCount === 0}
+            >
+              {isClosing ? "Closing..." : "Close round & start guessing"}
+            </Button>
+          </CardContent>
         </Card>
       )}
     </div>

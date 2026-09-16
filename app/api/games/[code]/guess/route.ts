@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
-import { songs, guesses } from "@/lib/db/schema";
+import { songs, guesses, rounds } from "@/lib/db/schema";
 import { getGameView } from "@/lib/queries/game-view";
 import { requireGameAndPlayer, isGameAccessError } from "@/lib/queries/game-access";
-import { canPlayerGuessSong, shouldRevealSong } from "@/lib/game-state";
-import { isSongEligibleForPlayer } from "@/lib/scoring";
+import { canPlayerGuessSong, shouldRevealSong, getEligiblePlayerIds, isRoundEligibleForPlayer } from "@/lib/game-state";
 
 const guessSchema = z.object({
   songId: z.string().uuid(),
@@ -55,6 +54,26 @@ export async function POST(
     );
   }
 
+  let roundIndex: number | null = null;
+  if (game.format === "party") {
+    const round = song.roundId
+      ? await db.query.rounds.findFirst({ where: eq(rounds.id, song.roundId) })
+      : undefined;
+    if (!round) {
+      return NextResponse.json(
+        { error: "This song isn't open for you to guess" },
+        { status: 409 },
+      );
+    }
+    if (!isRoundEligibleForPlayer(round.roundIndex, me.joinedAtRoundIndex)) {
+      return NextResponse.json(
+        { error: "You joined after this round started" },
+        { status: 409 },
+      );
+    }
+    roundIndex = round.roundIndex;
+  }
+
   const guessedPlayer = allPlayers.find(
     (p) => p.id === parsed.data.guessedPlayerId,
   );
@@ -76,11 +95,14 @@ export async function POST(
     const guessesForSong = await db.query.guesses.findMany({
       where: eq(guesses.songId, song.id),
     });
-    const eligiblePlayerCount = allPlayers.filter((p) =>
-      isSongEligibleForPlayer(song.index, p.joinedAtSongIndex),
-    ).length;
+    const eligiblePlayerIds = getEligiblePlayerIds(
+      game.format,
+      game.format === "party" ? roundIndex : song.index,
+      allPlayers,
+    );
     const allEligiblePlayersGuessed =
-      eligiblePlayerCount > 0 && guessesForSong.length >= eligiblePlayerCount;
+      eligiblePlayerIds.length > 0 &&
+      guessesForSong.length >= eligiblePlayerIds.length;
     const revealed = shouldRevealSong(
       game.revealMode,
       game.status,

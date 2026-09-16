@@ -48,11 +48,11 @@ export async function POST(request: Request) {
       code,
       format,
       totalRounds: format === "party" ? totalRounds : null,
-      // Road Trip's only supported combination; Party doesn't use these
-      // (its lifecycle is driven by `rounds` instead) but the columns are
-      // NOT NULL, so both formats get the same harmless default.
       guessingMode: "all_at_once",
-      revealMode: "end_of_game",
+      // Road Trip withholds every answer until the host ends the whole
+      // game; Party reveals each round as soon as everyone's guessed it
+      // (or the host closes that round), via the same end_of_song rule.
+      revealMode: format === "party" ? "end_of_song" : "end_of_game",
       submissionDeadline: submissionDeadline
         ? new Date(submissionDeadline)
         : null,
