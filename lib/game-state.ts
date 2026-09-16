@@ -73,3 +73,23 @@ export function shouldRevealSong(
 export function sortSongsByIndex(songs: Song[]): Song[] {
   return [...songs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
 }
+
+export type GameFormat = "road_trip" | "party";
+export type RoundStatus = "awaiting_prompt" | "submitting" | "guessing" | "revealed";
+
+/**
+ * Party mode's prompt-setter rotates through players in join order, one per
+ * round, wrapping around once everyone's had a turn. `players` must already
+ * be sorted by join order (oldest first).
+ */
+export function getPromptSetterForRound<T>(players: T[], roundIndex: number): T {
+  return players[roundIndex % players.length];
+}
+
+/** Party's parallel to `canPlayerGuessSong`/eligibility, but keyed on round instead of song index. */
+export function isRoundEligibleForPlayer(
+  roundIndex: number,
+  joinedAtRoundIndex: number,
+): boolean {
+  return roundIndex >= joinedAtRoundIndex;
+}
