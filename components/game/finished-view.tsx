@@ -94,7 +94,7 @@ export function FinishedView({
             <CardHeader>
               <CardTitle>Full song list</CardTitle>
               <CardDescription>
-                Grouped by who submitted each one — green means you guessed
+                Grouped by who submitted each one — teal means you guessed
                 it right, red means you guessed wrong.
               </CardDescription>
             </CardHeader>

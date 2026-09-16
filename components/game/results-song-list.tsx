@@ -28,10 +28,15 @@ export function ResultsSongList({ view }: { view: GameView }) {
   const groups = groupSongsBySubmitter(view.songs);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="grid gap-3 sm:grid-cols-2">
       {groups.map((group) => (
-        <div key={group.playerId} className="flex flex-col gap-2">
-          <p className="text-sm font-medium">{group.displayName}</p>
+        <div
+          key={group.playerId}
+          className="flex flex-col gap-2 rounded-lg border p-3"
+        >
+          <p className="truncate text-xs font-medium text-muted-foreground">
+            {group.displayName}
+          </p>
           <ol className="flex flex-col gap-2">
             {group.songs.map((song) => {
               const isCorrect =

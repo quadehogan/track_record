@@ -4,7 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { songs, guesses } from "@/lib/db/schema";
 import { getGameView } from "@/lib/queries/game-view";
 import { requireGameAndPlayer, isGameAccessError } from "@/lib/queries/game-access";
-import { canPlayerGuessSong } from "@/lib/game-state";
+import { canPlayerGuessSong, shouldRevealSong } from "@/lib/game-state";
+import { isSongEligibleForPlayer } from "@/lib/scoring";
 
 const guessSchema = z.object({
   songId: z.string().uuid(),
@@ -70,20 +71,45 @@ export async function POST(
       eq(guesses.guesserPlayerId, me.id),
     ),
   });
+
   if (existingGuess) {
-    return NextResponse.json(
-      { error: "You've already guessed this song" },
-      { status: 409 },
+    const guessesForSong = await db.query.guesses.findMany({
+      where: eq(guesses.songId, song.id),
+    });
+    const eligiblePlayerCount = allPlayers.filter((p) =>
+      isSongEligibleForPlayer(song.index, p.joinedAtSongIndex),
+    ).length;
+    const allEligiblePlayersGuessed =
+      eligiblePlayerCount > 0 && guessesForSong.length >= eligiblePlayerCount;
+    const revealed = shouldRevealSong(
+      game.revealMode,
+      game.status,
+      song,
+      allEligiblePlayersGuessed,
     );
+    if (revealed) {
+      return NextResponse.json(
+        { error: "This guess has already been revealed" },
+        { status: 409 },
+      );
+    }
+
+    await db
+      .update(guesses)
+      .set({
+        guessedPlayerId: guessedPlayer.id,
+        isCorrect: guessedPlayer.id === song.submittedByPlayerId,
+      })
+      .where(eq(guesses.id, existingGuess.id));
+  } else {
+    await db.insert(guesses).values({
+      songId: song.id,
+      guesserPlayerId: me.id,
+      guessedPlayerId: guessedPlayer.id,
+      isCorrect: guessedPlayer.id === song.submittedByPlayerId,
+    });
   }
 
-  await db.insert(guesses).values({
-    songId: song.id,
-    guesserPlayerId: me.id,
-    guessedPlayerId: guessedPlayer.id,
-    isCorrect: guessedPlayer.id === song.submittedByPlayerId,
-  });
-
   const view = await getGameView(code, identity);
-  return NextResponse.json(view, { status: 201 });
+  return NextResponse.json(view, { status: existingGuess ? 200 : 201 });
 }
